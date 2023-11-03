@@ -2,7 +2,7 @@
 ## :Copyright: 2023, Crash Override, Inc.
 
 
-import os, nimutils, posix, terminal, common
+import os, nimutils, posix, common, json
 
 var
   paused = false
@@ -20,42 +20,40 @@ proc handlePlayerInput(ignore0: pointer,
     elif ch == 'q':
       exit = true
 
+proc applyHeader(hdr: string) {.cdecl.} =
+  try:
+    var
+      jObj = parseJson(hdr)
+      w    = jObj["width"].getInt()
+      h    = jObj["height"].getInt()
 
-proc ensureTerminalDimensions(f: File) {.cdecl.} =
-  var
-    x: tuple[w, h: int]
-    tupPtr = addr x
+    if w <= 0 or h <= 0:
+      return
 
-  discard f.readBuffer(tupPtr, sizeof(x))
+    stdout.write("\e[8;" & $(h) & ";" & $(w) & "t")
+  except:
+    discard
 
-  while true:
-    let (curw, curh) = terminalSize()
-
-    if curw >= x.w and curh >= x.h:
-      break
-
-    stdout.write("\e[2J\e[H")
-    echo "Replay requires: width of ", x.w, " columns; height of ", x.h,
-       " rows."
-    echo "Current size is: width of ", curw, " columns; height of ", curh,
-       " rows."
-    sleep(10)
 
 proc replayProcess*(fname:   string,
                     allowInput           = true,
                     maxTimeBetweenEvents = 1500) {.cdecl.} =
   var
-    sleepTime: int
-    buf:       array[1024, uint8]
-    hdr:       WriteHeader
-    spacings:  seq[uint64] = @[0]
-    lastStamp: uint64      = 0
-    hdrptr                 = addr hdr
-    bufPtr64               = cast[ptr uint64](addr buf[0])
-    f                      = open(fname, fmRead)
-    epochIx                = 0
-    lastEpoch              = -1
-    maxLen                 = f.getFileSize()
+    buf:         array[1024, uint8]
+    hdr:         WriteHeader
+    spacings:    seq[uint64] = @[0]
+    lastStamp:   uint64      = 0
+    hdrptr                   = addr hdr
+    bufPtr64                 = cast[ptr uint64](addr buf[0])
+    f                        = open(fname, fmRead)
+    epochIx                  = 0
+    lastEpoch                = -1
+    maxLen                   = f.getFileSize()
+    tty                      = open("/dev/tty", fmWrite)
+    sleepTime:   int
+    hdrLen:      int
+    b:           ptr char
+    hdrStr:      string
     termSave:    Termcap
     newTerm:     Termcap
     startTime:   uint64
@@ -63,8 +61,6 @@ proc replayProcess*(fname:   string,
     stdinFd:     Party
     cb:          Party
     tv:          Timeval
-    tty = open("/dev/tty", fmWrite)
-
 
   discard dup2(tty.getFileHandle(), 1)
   tcGetAttr(cint(1), termSave)
@@ -77,7 +73,19 @@ proc replayProcess*(fname:   string,
   tcSetAttr(0, TCSAFLUSH, newTerm)
 
   f.setFilePos(0)
-  ensureTerminalDimensions(f)
+
+  try:
+    discard f.readBuffer(addr hdrLen, sizeof(int))
+    b = cast[ptr char](alloc(hdrLen + 1))
+    discard f.readBuffer(b, hdrLen)
+
+    hdrStr = binaryCstringToString(cstring(b), hdrLen)
+    dealloc(b)
+    applyHeader(hdrStr)
+  except:
+        print("<br><atomiclime>Invalid cap10 file.</atomiclime><br>",
+              ensureNl = false)
+        quit(1)
 
   if allowInput:
     tv.tv_sec  = Time(0)

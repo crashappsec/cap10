@@ -1,11 +1,9 @@
 ## :Author: John Viega (john@crashoverride.com)
 ## :Copyright: 2023, Crash Override, Inc.
 
-import record, play, nimutils, os, expect, posix
+import record, play, nimutils, os, expect
 export record, play, expect
 
-proc getLoginShell*(): string =
-  result = $(getpwuid(geteuid())[].pw_shell)
 
 when isMainModule:
   setStyle("h1", newStyle(fgColor = "yellow", bgColor = "blue",

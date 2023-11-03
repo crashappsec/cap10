@@ -1,12 +1,46 @@
 ## :Author: John Viega (john@crashoverride.com)
 ## :Copyright: 2023, Crash Override, Inc.
 
-import nimutils, terminal, common, std/tempfiles, os
+import nimutils, terminal, common, std/tempfiles, os, json, posix, strutils
 
 {.emit: """
 extern ssize_t read_one(int, char *, size_t);
 extern bool write_data(int, char *, size_t);
 """.}
+
+proc getLoginShell*(): string =
+  result = $(getpwuid(geteuid())[].pw_shell)
+
+# Changing the raw file format to go ahead and use the ASCIIcast JSON
+# header. We first save a length as an int, then the JSON.
+
+proc createASciicastHeader*(title = "Terminal Capture", idle_time_limit = 1.5,
+  command = "", fg_theme = "", bg_theme = "", palette_theme = ""):
+    string {.cdecl.} =
+  var
+    shell  = getenv("SHELL")
+    term   = getenv("TERM")
+    (w, h) = terminalSize()
+    start  = int(int(unixTimeInMs()) / 1000)
+
+  if shell == "":
+    shell = getLoginShell()
+  if term == "":
+    term = "xterm"
+
+
+  var jobj = %* {"version": 2, "width" : w, "height" : h,
+                  "timestamp" : start, "title" : title}
+
+  jobj["env"] = %* { "TERM" : term, "SHELL" : shell }
+
+  if command != "":
+    jobj["command"] = %* command
+
+  if fg_theme != "" or bg_theme != "" or palette_theme != "":
+    jobj["theme"] = %* { "fg" : fg_theme, "bg" : bg_theme,
+                         "palette" : palette_theme }
+  return $(jobj)
 
 
 proc handleCapture*(state:   var CaptureState,
@@ -29,16 +63,18 @@ proc handleInput*(state:   var CaptureState,
   if state.includeInput:
     state.handleCapture(unused, capture, caplen)
 
-proc captureSetup*(state: var CaptureState, fd: cint) {.cdecl.} =
+proc captureSetup*(state: var CaptureState, fd: cint,
+                   exe = "", args: seq[string] = @[]) {.cdecl.} =
   var
-    (w, h)     = terminalSize()
-    #startTime = unixTimeInMs()
+    cmd    = exe & args.join(" ")
+    header = createAsciiCastHeader(command = cmd)
+    l      = header.len()
 
   state.fd = fd
 
-  fd.rawFdWrite(addr w, csize_t(sizeof(int)))
-  fd.rawFdWrite(addr h, csize_t(sizeof(int)))
-  #fd.rawFdWrite(addr startTime, csize_t(sizeof(uint64)))
+  fd.rawFdWrite(addr l, csize_t(sizeof(int)))
+  fd.rawFdWrite(addr header[0], csize_t(l))
+
 
 proc captureProcess*(exe: string, args: seq[string], fd: cint,
                      includeInput = false): int
@@ -48,7 +84,7 @@ proc captureProcess*(exe: string, args: seq[string], fd: cint,
     subproc: SubProcess
     state:   CaptureState
 
-  state.captureSetup(fd)
+  state.captureSetup(fd, exe, args)
   state.includeInput = includeInput
   subproc.initSubprocess(exe, @[exe] & args)
   subproc.usePty()

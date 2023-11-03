@@ -6,4 +6,4 @@ bin     = @["cap10"]
 srcDir  = "src"
 
 requires "nim >= 2.0.0"
-requires "https://github.com/crashappsec/nimutils#0dc81b58f5884a0cb7a5c22404362e6c91191f9c"
+requires "https://github.com/crashappsec/nimutils#a7ec24b27453342157cefe947e5730af5f5c05af"

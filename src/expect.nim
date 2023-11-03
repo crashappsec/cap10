@@ -3,10 +3,6 @@
 
 import common, record, tables, nimutils, re, posix
 
-proc binaryCstringToString*(s: cstring, l: int): string =
-  for i in 0 ..< l:
-    result.add(s[i])
-
 type ExpectObject* = object
   captureFile*:  File
   capturePath*:  string

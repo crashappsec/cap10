@@ -1,12 +1,12 @@
 ## :Author: John Viega (john@crashoverride.com)
 ## :Copyright: 2023, Crash Override, Inc.
 
+
 import os, nimutils, posix, terminal, common
 
 var
   paused = false
   exit   = false
-  termSave: Termcap
 
 proc handlePlayerInput(ignore0: pointer,
                        ignore1: pointer,
@@ -53,22 +53,31 @@ proc replayProcess*(fname:   string,
     hdrptr                 = addr hdr
     bufPtr64               = cast[ptr uint64](addr buf[0])
     f                      = open(fname, fmRead)
-    startTime: uint64
     epochIx                = 0
     lastEpoch              = -1
     maxLen                 = f.getFileSize()
+    termSave:    Termcap
+    newTerm:     Termcap
+    startTime:   uint64
     switchboard: Switchboard
     stdinFd:     Party
     cb:          Party
     tv:          Timeval
+    tty = open("/dev/tty", fmWrite)
 
-  termcapGet(termSave)
-  termcapSetTypicalParent()
+
+  discard dup2(tty.getFileHandle(), 1)
+  tcGetAttr(cint(1), termSave)
+  newTerm = termSave
+  newTerm.c_iflag = newTerm.c_iflag and not uint32(IXON)
+  newTerm.c_lflag = newTerm.c_lflag and (not uint32(ECHO) or uint32(ICANON))
+  newTerm.c_cc[int(VMIN)]  = 0
+  newTerm.c_cc[int(VTIME)] = 1
+
+  tcSetAttr(0, TCSAFLUSH, newTerm)
 
   f.setFilePos(0)
   ensureTerminalDimensions(f)
-
-
 
   if allowInput:
     tv.tv_sec  = Time(0)
@@ -85,9 +94,10 @@ proc replayProcess*(fname:   string,
       switchboard.run()
 
       if exit:
-        termcapSet(termSave)
+        tcSetAttr(cint(1), TCSAFLUSH, termSave)
         print("<br><atomiclime>Quitting early.</atomiclime><br>",
               ensureNl = false)
+        sleep(200)
         quit(0)
       if paused:
         sleep(100)
@@ -106,4 +116,8 @@ proc replayProcess*(fname:   string,
       sleep(sleepTime)
 
     rawFdWrite(cint(1), addr buf, csize_t(hdr.contentLen))
-  termcapSet(termSave)
+
+
+  tcSetAttr(cint(1), TCSAFLUSH, termSave)
+  sleep(200)
+  tty.close()

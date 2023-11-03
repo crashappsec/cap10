@@ -79,7 +79,6 @@ proc captureProcess*(exe: string, args: seq[string]): string {.cdecl.} =
     desiredPath: string = resolvePath("output.cap10")
     path:        string
 
-
   (f, path) = openWithoutClobber(desiredPath)
 
   captureProcess(exe, args, f.getFileHandle())

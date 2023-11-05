@@ -1,9 +1,14 @@
 ## :Author: John Viega (john@crashoverride.com)
 ## :Copyright: 2023, Crash Override, Inc.
+##
+## I'm going to hook up con4m for command line arguments
+## after my next batch of con4m work. Until then, a lot
+## of the options are going to stay hardcoded.
 
 import record, play, nimutils, os, expect, convert, common, std/terminal
 export record, play, expect, common
 
+const logext = ".log"
 
 when isMainModule:
   useCurrentTermStateOnSignal()
@@ -19,10 +24,11 @@ when isMainModule:
         params.add(getLoginShell())
         params.add("-i")
       print("<atomiclime>Recording.</atomiclime><br>", ensureNl = false)
-      let name = captureProcess(params[1], params[2 .. ^1])
+      let name = captureProcess(params[1], params[2 .. ^1], logExt)
       restoreTermState()
-      print("<atomiclime>Output saved to '" & name & "'</atomiclime><br>",
-            ensureNl = false)
+      print("<atomiclime>Output saved to: '" & name & "'</atomiclime><br>" &
+        "<atomiclime>Input log in: " & name & logExt & "'</atomiclime><br>")
+
     elif params[0] == "play":
       if len(params) == 1 or (len(params) == 2 and params[1] == "-n"):
         params.add("output.cap10")

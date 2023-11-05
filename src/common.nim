@@ -12,6 +12,7 @@ type
   CaptureState* = object
     includeInput*:    bool
     fd*:              cint
+    inputLog*:        File
 
   WriteHeader* = object
     timeStamp*:      uint64

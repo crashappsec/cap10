@@ -20,20 +20,21 @@ proc handlePlayerInput(ignore0: pointer,
     elif ch == 'q':
       exit = true
 
-proc applyHeader(hdr: string) {.cdecl.} =
+proc applyHeader(hdr: string): int {.cdecl.} =
   try:
     var
       jObj = parseJson(hdr)
       w    = jObj["width"].getInt()
       h    = jObj["height"].getInt()
+      t    = int(jObj["idle_time_limit"].getFloat() * 1000)
 
     if w <= 0 or h <= 0:
       return
 
     stdout.write("\e[8;" & $(h) & ";" & $(w) & "t")
+    return t
   except:
     discard
-
 
 proc replayProcess*(fname:   string,
                     allowInput           = true,
@@ -41,36 +42,26 @@ proc replayProcess*(fname:   string,
   var
     buf:         array[1024, uint8]
     hdr:         WriteHeader
-    spacings:    seq[uint64] = @[0]
     lastStamp:   uint64      = 0
     hdrptr                   = addr hdr
-    bufPtr64                 = cast[ptr uint64](addr buf[0])
     f                        = open(fname, fmRead)
-    epochIx                  = 0
-    lastEpoch                = -1
     maxLen                   = f.getFileSize()
     tty                      = open("/dev/tty", fmWrite)
+    sepTime:     int
     sleepTime:   int
     hdrLen:      int
     b:           ptr char
     hdrStr:      string
     termSave:    Termcap
     newTerm:     Termcap
-    startTime:   uint64
     switchboard: Switchboard
     stdinFd:     Party
     cb:          Party
     tv:          Timeval
 
   discard dup2(tty.getFileHandle(), 1)
-  tcGetAttr(cint(1), termSave)
-  newTerm = termSave
-  newTerm.c_iflag = newTerm.c_iflag and not uint32(IXON)
-  newTerm.c_lflag = newTerm.c_lflag and (not uint32(ECHO) or uint32(ICANON))
-  newTerm.c_cc[int(VMIN)]  = 0
-  newTerm.c_cc[int(VTIME)] = 1
-
-  tcSetAttr(0, TCSAFLUSH, newTerm)
+  # tcGetAttr(cint(1), newterm)
+  # newTerm.rawMode()
 
   f.setFilePos(0)
 
@@ -79,9 +70,12 @@ proc replayProcess*(fname:   string,
     b = cast[ptr char](alloc(hdrLen + 1))
     discard f.readBuffer(b, hdrLen)
 
-    hdrStr = binaryCstringToString(cstring(b), hdrLen)
+    hdrStr = binaryCstringToString(cast[cstring](b), hdrLen)
     dealloc(b)
-    applyHeader(hdrStr)
+    sepTime = applyHeader(hdrStr)
+    if sepTime > maxTimeBetweenEvents or sepTime == 0:
+      sepTime = maxTimeBetweenEvents
+
   except:
         print("<br><atomiclime>Invalid cap10 file.</atomiclime><br>",
               ensureNl = false)
@@ -102,30 +96,41 @@ proc replayProcess*(fname:   string,
       switchboard.run()
 
       if exit:
-        tcSetAttr(cint(1), TCSAFLUSH, termSave)
         print("<br><atomiclime>Quitting early.</atomiclime><br>",
               ensureNl = false)
-        sleep(200)
         quit(0)
       if paused:
         sleep(100)
         continue
 
     discard f.readBuffer(hdrptr, sizeof(WriteHeader))
+
+    if hdr.contentLen == -1:
+      var w, h: int
+      discard f.readBuffer(addr w, sizeof(w))
+      discard f.readBuffer(addr h, sizeof(h))
+      # Not sure we need to process the resize at all, but if we do,
+      # all the sudden we will need to keep track of UTF-8 code point
+      # state *and* ansi term state, so let's avoid this for now.
+      #
+      # Really, probably what we'd do to be safe is look for a newline or
+      # \e and inject before those.
+      #
+      # But really, we're only capturing resize info rn because
+      # asciicast wants the info.
+      continue
+
     discard f.readBytes(buf, 0, hdr.contentLen)
 
     sleepTime = int(hdr.timeStamp - lastStamp)
     lastStamp = hdr.timeStamp
 
-    if sleepTime > maxTimeBetweenEvents:
-      sleepTime = maxTimeBetweenEvents
+    if sleepTime > sepTime:
+      sleepTime = sepTime
 
     if sleepTime > 0:
       sleep(sleepTime)
 
     rawFdWrite(cint(1), addr buf, csize_t(hdr.contentLen))
-
-
-  tcSetAttr(cint(1), TCSAFLUSH, termSave)
-  sleep(200)
+  sleep(400)
   tty.close()

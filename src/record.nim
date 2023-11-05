@@ -42,14 +42,21 @@ proc createASciicastHeader*(title = "Terminal Capture", idle_time_limit = 1.5,
                          "palette" : palette_theme }
   return $(jobj)
 
-
 proc handleCapture*(state:   var CaptureState,
                     unused:  pointer,
                     capture: cstring,
                     caplen:  int) {.cdecl.} =
-
   var hdr: WriteHeader
   hdr.timeStamp   = unixTimeInMs()
+
+  if gotResize:
+    hdr.contentLen = -1
+    var (w, h)     = terminalSize()
+
+    rawFdWrite(state.fd, addr hdr, csize_t(sizeof(hdr)))
+    rawFdWrite(state.fd, addr w, csize_t(sizeof(w)))
+    rawFdWrite(state.fd, addr h, csize_t(sizeof(h)))
+
   hdr.contentLen  = caplen
 
   rawFdWrite(state.fd, addr hdr, csize_t(sizeof(hdr)))
@@ -75,7 +82,6 @@ proc captureSetup*(state: var CaptureState, fd: cint,
   fd.rawFdWrite(addr l, csize_t(sizeof(int)))
   fd.rawFdWrite(addr header[0], csize_t(l))
 
-
 proc captureProcess*(exe: string, args: seq[string], fd: cint,
                      includeInput = false): int
     {.cdecl, discardable.} =
@@ -87,6 +93,7 @@ proc captureProcess*(exe: string, args: seq[string], fd: cint,
   state.captureSetup(fd, exe, args)
   state.includeInput = includeInput
   subproc.initSubprocess(exe, @[exe] & args)
+  subproc.setStartupCallback(SpStartupCallback(registerPtyFd))
   subproc.usePty()
   subproc.setExtra(addr state)
   subproc.setPassthrough(SpIoAll, false)

@@ -1,7 +1,6 @@
 ## :Author: John Viega (john@crashoverride.com)
 ## :Copyright: 2023, Crash Override, Inc.
 
-
 import os, nimutils, posix, common, json
 
 var
@@ -134,3 +133,12 @@ proc replayProcess*(fname:   string,
     rawFdWrite(cint(1), addr buf, csize_t(hdr.contentLen))
   sleep(400)
   tty.close()
+
+proc cmdPlaybackProcess*(params: seq[string], allowInput: bool) =
+  for item in params:
+    if item == "-i":
+      continue
+    replayProcess(item, allowInput)
+
+  restoreTermState()
+  print("<atomiclime>Playback complete.</atomiclime><br>")

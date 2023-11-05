@@ -140,3 +140,12 @@ proc captureProcess*(exe: string, args: seq[string], inputLogExt = "",
   f.close()
 
   return path
+
+const logext = ".log"
+
+proc cmdCaptureProcess*(exe: string, args: seq[string]) =
+      print("<atomiclime>Recording.</atomiclime>")
+      let name = captureProcess(exe, args, logExt)
+      restoreTermState()
+      print("<atomiclime>Output saved to: '" & name & "'</atomiclime><br>" &
+        "<atomiclime>Input log in: " & name & logExt & "'</atomiclime><br>")

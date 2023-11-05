@@ -6,6 +6,13 @@ import nimutils, posix, tables, std/terminal, std/termios
 var
   TIOCSWINSZ*{.importc, header: "<sys/ioctl.h>".}: culong
   SIGWINCH*  {.importc, header: "<signal.h>".}: cint
+  LC_ALL*    {.importc, header: "<locale.h>".}: cint
+
+proc setlocale*(category: cint, locale: cstring): cstring {. importc, cdecl,
+                                nodecl, header: "<locale.h>", discardable .}
+
+proc useNativeLocale*() =
+  setlocale(LC_ALL, cstring(""))
 
 type
   CaptureContentType = enum CctInput, CctOutput

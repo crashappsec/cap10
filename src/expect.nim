@@ -89,13 +89,16 @@ proc cap10_send*(ctx: var ExpectObject, text: cstring, addCr = true)
   ctx.send($text, addCr)
 
 proc spawnSession*(ctx: var ExpectObject, cmd = "/bin/bash",
-                    args = @["-i"], captureFile = "", passthrough = false)
-    {.cdecl.} =
+                   args = @["-i"], captureFile = "", passthrough = false,
+                   inputLogFile = "") {.cdecl.} =
   var timeout: Timeval
   timeout.tv_sec  = Time(10000000)
   timeout.tv_usec = Suseconds(0)
 
   ctx = ExpectObject()
+
+  if inputLogFile != "":
+    ctx.captureState.inputLog = open(inputLogFile.resolvePath(), fmWrite)
 
   if captureFile != "":
     (ctx.captureFile, ctx.capturePath) = captureFile.openWithoutClobber()
@@ -121,12 +124,14 @@ proc spawnSession*(ctx: var ExpectObject, cmd = "/bin/bash",
   ctx.pty_fd = ctx.subproc.getPtyFd()
 
 proc spawnSession*(cmd = "/bin/bash", args = @["-i"], captureFile = "",
-                        passthrough = false): ExpectObject {.cdecl.} =
+                   passthrough = false, inputLogFile = ""):
+                     ExpectObject {.cdecl.} =
   result = ExpectObject()
-  result.spawn_session(cmd, args, captureFile, passthrough)
+  result.spawn_session(cmd, args, captureFile, passthrough, inputLogFile)
 
 proc cap10_spawn*(cmd: cstring, args: cStringArray, captureFile: cstring,
-                  passthrough: bool): ExpectObject {.exportc, cdecl.} =
+                  passthrough: bool, inputLogFile: cstring):
+                    ExpectObject {.exportc, cdecl.} =
     var
       strargs: seq[string]
       i = 0
@@ -136,7 +141,8 @@ proc cap10_spawn*(cmd: cstring, args: cStringArray, captureFile: cstring,
       strargs.add($(args[i]))
       i += 1
 
-    return spawnSession($(cmd), strargs, $(captureFile), passthrough)
+    return spawnSession($(cmd), strargs, $(captureFile), passthrough,
+                        $(inputLogFile))
 
 when isMainModule:
   var

@@ -10,23 +10,27 @@ later. You're good.
 
 - `cap10 record [optional command]` starts recording.
 - `cap10 play file.cap10`
+- `cap10 convert [filename]` will convert a cap10 file to the _asciicast 2.0_ format.
 
-Currently, there's no web player here, just the in-terminal
-player. When you use modern terminals, you may not get awesome results
-if you try to play back in a different terminal, since the underlying
-codes sent are replayed.  More generic xterm stuff is going to be more
-portable.
+The `cap10` capture format is binary, and there's currently not a web
+player for it. But you can convert it to asciicast format.
 
-Note that this is not the same format file that asciinema uses. We
-haven't looked at that yet; we use a binary format that's highly
-efficient, allowing us to basically directly write what's recorded
-directly as the terminal generates it. At some point soon we will
-either generate their format at the end, or adapt an OSS web terminal
-to use our format, whichever seems to make the most sense.
+On Linux, cap10 should build as a static ELF binary, so can run in
+minimal environments like Alpine, without the Python dependencies of
+asciinema.
 
-Additionally, on Linux, cap10 should build as a static ELF binary, so
-can run in minimal environments like Alpine, without the Python
-dependencies of asciinema.
+Also, we produce a separate input log to make it easier to automate
+scripting for demos (in conjunction w/ our expect capabilities
+below). It captures keypresses only, so if you don't type out a full
+command, it won't capture the exact commands (in the future we may do
+some shell integration to get the shell view).
+
+Essentially, cap10 should replace the following tools:
+
+- script
+- asciinema
+- expect
+- autoexpect (which never worked well anyway)
 
 ## Expect More
 
@@ -35,6 +39,7 @@ benefits:
 
 1. You can fully capture your `expect` sessions if you want.
 2. You can interact with your scripts if you want.
+3. You can capture the input from your interactions.
 
 The second makes expect-like automation easier to write. I've had many
 cases where the regexp didn't fire, and the result was a hanging
@@ -44,7 +49,8 @@ pattern matcher.
 
 For example, the below code waits for a prompt, runs a command, then
 waits for 'hiho' followed by the enter key (The enter key generates
-'\r' NOT '\n').
+'\r' NOT '\n'; the log file does translate them back to '\n' to be more
+human readable).
 
 But the code never does anything to send that string to the
 terminal. Instead, you're left to manually interact with it, and when
@@ -80,9 +86,10 @@ of this, that we may eventually add.
 
 ## Status
 
-It's early, and there are plenty of rough edges. This was done for our
-internal use, but eventually we will polish this up. Until then, use
-at your own risk :)
+It's early, and there are some rough edges (for instance, if there are
+file perms issues, we're currently not handling gracefully). This was
+done for our internal use, but eventually we will polish this
+up. Until then, use at your own risk :)
 
 ## Building
 
@@ -90,8 +97,8 @@ You need to have Nim 2.0 installed, and be on a 64-bit posix
 system. We really develop only on Linux and Mac, so there's more than
 a non-zero chance that *BSD or WSL won't work at this point...
 
-But all you need to do to build the `cap10` binary is run from the
-root of the repo:
+But all you should need to do to build the `cap10` binary is run from
+the root of the repo:
 
 ```
 nimble build

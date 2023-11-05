@@ -70,6 +70,9 @@ proc handleInput*(state:   var CaptureState,
   if state.includeInput:
     state.handleCapture(unused, capture, caplen)
 
+  if state.inputLog != nil:
+    state.inputLog.write(`$`(capture).replace("\r", "\n"))
+
 proc captureSetup*(state: var CaptureState, fd: cint,
                    exe = "", args: seq[string] = @[]) {.cdecl.} =
   var
@@ -83,7 +86,7 @@ proc captureSetup*(state: var CaptureState, fd: cint,
   fd.rawFdWrite(addr header[0], csize_t(l))
 
 proc captureProcess*(exe: string, args: seq[string], fd: cint,
-                     includeInput = false): int
+                     inputlog = "", includeInput = false): int
     {.cdecl, discardable.} =
   ## includeInput should be true when echo is off remotely.
   var
@@ -92,6 +95,10 @@ proc captureProcess*(exe: string, args: seq[string], fd: cint,
 
   state.captureSetup(fd, exe, args)
   state.includeInput = includeInput
+
+  if inputLog != "":
+    state.inputLog = open(resolvePath(inputLog), fmWrite)
+
   subproc.initSubprocess(exe, @[exe] & args)
   subproc.setStartupCallback(SpStartupCallback(registerPtyFd))
   subproc.usePty()
@@ -102,6 +109,9 @@ proc captureProcess*(exe: string, args: seq[string], fd: cint,
   subproc.run()
 
   result = subproc.getExitCode()
+
+  if inputLog != "":
+    state.inputLog.close()
 
 proc openWithoutClobber*(filename: string): (File, string) {.cdecl.} =
   var
@@ -115,7 +125,8 @@ proc openWithoutClobber*(filename: string): (File, string) {.cdecl.} =
   else:
     return (f, path)
 
-proc captureProcess*(exe: string, args: seq[string]): string {.cdecl.} =
+proc captureProcess*(exe: string, args: seq[string], inputLogExt = "",
+                     includeInput = false): string {.cdecl.} =
   # Throws exception if the open fails.
   var
     f:           File
@@ -124,7 +135,17 @@ proc captureProcess*(exe: string, args: seq[string]): string {.cdecl.} =
 
   (f, path) = openWithoutClobber(desiredPath)
 
-  captureProcess(exe, args, f.getFileHandle())
+  captureProcess(exe, args, f.getFileHandle(),
+                 path & inputLogExt, includeInput)
   f.close()
 
   return path
+
+const logext = ".log"
+
+proc cmdCaptureProcess*(exe: string, args: seq[string]) =
+      print("<atomiclime>Recording.</atomiclime>")
+      let name = captureProcess(exe, args, logExt)
+      restoreTermState()
+      print("<atomiclime>Output saved to: '" & name & "'</atomiclime><br>" &
+        "<atomiclime>Input log in: " & name & logExt & "'</atomiclime><br>")

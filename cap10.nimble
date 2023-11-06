@@ -1,9 +1,9 @@
-version = "0.2.0"
+version = "0.3.0"
 author  = "John Viega"
 description = "A tool to capture and replay command line terminal sessions"
 license = "Apache-2.0"
-bin     = @["cap10"]
+bin     = @["cap10", "demo"]
 srcDir  = "src"
 
 requires "nim >= 2.0.0"
-requires "https://github.com/crashappsec/nimutils#ec728cf7c1bc0fd19ca203fe3504abbfe127e6bd"
+requires "https://github.com/crashappsec/nimutils#77b16328d02ce01ce6c4eceab26e20c2b1be32d4"

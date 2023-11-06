@@ -1,7 +1,7 @@
 ## :Author: John Viega (john@crashoverride.com)
 ## :Copyright: 2023, Crash Override, Inc.
 
-import common, record, tables, nimutils, re, posix
+import common, record, tables, nimutils, re, posix, os
 
 type ExpectObject* = object
   captureFile*:  File
@@ -78,22 +78,30 @@ proc cap10_add_pattern*(ctx: var ExpectObject, text: cstring, tag: cstring)
     {.exportc, cdecl.} =
   ctx.addPattern($(text), $(tag))
 
-proc send*(ctx: var ExpectObject, text: string, addCr = true)
+proc send*(ctx: var ExpectObject, text: string, pause = 0, addCr = true,
+                                                        keyWait = 100)
     {.cdecl.} =
-  var toWrite = if addCr: text & "\r" else: text
-  ctx.pty_fd.rawFdWrite(addr toWrite[0], csize_t(toWrite.len()))
-  discard ctx.subproc.poll()
+  if pause != 0:
+    sleep(pause div 2)
 
-proc cap10_send*(ctx: var ExpectObject, text: cstring, addCr = true)
+  var toWrite = if addCr: text & "\r" else: text
+  for i in 0 ..< toWrite.len():
+    ctx.pty_fd.rawFdWrite(addr toWrite[i], csize_t(1))
+    if keyWait != 0:
+      sleep(keyWait)
+    discard ctx.subproc.poll()
+
+  if pause != 0:
+    sleep(pause div 2)
+
+proc cap10_send*(ctx: var ExpectObject, text: cstring, pause = 0,
+                 addCr = true, keywait = 100)
     {.exportc, cdecl.} =
-  ctx.send($text, addCr)
+  ctx.send($text, pause, addCr, keywait)
 
 proc spawnSession*(ctx: var ExpectObject, cmd = "/bin/bash",
                    args = @["-i"], captureFile = "", passthrough = false,
                    inputLogFile = "") {.cdecl.} =
-  var timeout: Timeval
-  timeout.tv_sec  = Time(10000000)
-  timeout.tv_usec = Suseconds(0)
 
   ctx = ExpectObject()
 
@@ -110,7 +118,6 @@ proc spawnSession*(ctx: var ExpectObject, cmd = "/bin/bash",
 
 
   ctx.subproc.initSubprocess(cmd, @[cmd] & args)
-  ctx.subproc.setTimeout(timeout)
   ctx.subproc.usePty()
   ctx.subproc.setExtra(addr ctx)
   ctx.subproc.setPassthrough(SpIoAll, passthrough)

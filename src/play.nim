@@ -76,8 +76,7 @@ proc replayProcess*(fname:   string,
       sepTime = maxTimeBetweenEvents
 
   except:
-        print("<br><atomiclime>Invalid cap10 file.</atomiclime><br>",
-              ensureNl = false)
+        print("<br><atomiclime>Invalid cap10 file.</atomiclime><br>")
         quit(1)
 
   if allowInput:
@@ -95,8 +94,7 @@ proc replayProcess*(fname:   string,
       switchboard.run()
 
       if exit:
-        print("<br><atomiclime>Quitting early.</atomiclime><br>",
-              ensureNl = false)
+        print("<br><atomiclime>Quitting early.</atomiclime><br>")
         quit(0)
       if paused:
         sleep(100)

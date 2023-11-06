@@ -1,6 +1,8 @@
 # Cap10
 ## Script, capture and replay terminal sessions
 
+![Cap10 Demo](https://github-production-user-asset-6210df.s3.amazonaws.com/4764481/280741508-3a3d90cd-b4d2-44e0-9b1a-c38543cbd903.gif)
+
 You record and play back terminal sessions or other terminal programs
 with the `cap10` command, which will record a process until it exits.
 
@@ -31,6 +33,13 @@ Essentially, cap10 should replace the following tools:
 - asciinema
 - expect
 - autoexpect (which never worked well anyway)
+
+## GIF conversion
+
+If you'd like to convert the output to a video for a web page, instead
+of an Asciicast, we recommend producing an GIF, which you can do 
+do this by exporting to asciicast and then running the
+[agg tool](https://github.com/asciinema/agg) from asciinema.
 
 ## Expect More
 
@@ -90,6 +99,13 @@ It's early, and there are some rough edges (for instance, if there are
 file perms issues, we're currently not handling gracefully). This was
 done for our internal use, but eventually we will polish this
 up. Until then, use at your own risk :)
+
+In the not too distant future, we'll bundle the API for direct calling
+from other languages, with wrappers for (at least) Go and Python.
+
+Eventually, we'd like to have a native player and more, and be able to
+natively produce GIFs. But no hurry; the asciinema tools there are
+good.
 
 ## Building
 

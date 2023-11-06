@@ -14,7 +14,7 @@ proc getLoginShell*(): string =
 # Changing the raw file format to go ahead and use the ASCIIcast JSON
 # header. We first save a length as an int, then the JSON.
 
-proc createASciicastHeader*(title = "Terminal Capture", idle_time_limit = 1.5,
+proc createASciicastHeader*(title = "Terminal Capture", idle_time_limit = 3,
   command = "", fg_theme = "", bg_theme = "", palette_theme = ""):
     string {.cdecl.} =
   var
@@ -27,7 +27,6 @@ proc createASciicastHeader*(title = "Terminal Capture", idle_time_limit = 1.5,
     shell = getLoginShell()
   if term == "":
     term = "xterm"
-
 
   var jobj = %* {"version": 2, "width" : w, "height" : h,
                   "timestamp" : start, "title" : title}
@@ -144,7 +143,7 @@ proc captureProcess*(exe: string, args: seq[string], inputLogExt = "",
 const logext = ".log"
 
 proc cmdCaptureProcess*(exe: string, args: seq[string]) =
-      print("<atomiclime>Recording.</atomiclime>")
+      print("<atomiclime>Recording.</atomiclime><br>")
       let name = captureProcess(exe, args, logExt)
       restoreTermState()
       print("<atomiclime>Output saved to: '" & name & "'</atomiclime><br>" &

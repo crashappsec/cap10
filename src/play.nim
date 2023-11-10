@@ -76,7 +76,7 @@ proc replayProcess*(fname:   string,
       sepTime = maxTimeBetweenEvents
 
   except:
-        print("<br><atomiclime>Invalid cap10 file.</atomiclime><br>")
+        print("<br><h2>Invalid cap10 file.</h2><br>")
         quit(1)
 
   if allowInput:
@@ -94,7 +94,7 @@ proc replayProcess*(fname:   string,
       switchboard.run()
 
       if exit:
-        print("<br><atomiclime>Quitting early.</atomiclime><br>")
+        print("<br><h2>Quitting early.</h2><br>")
         quit(0)
       if paused:
         sleep(100)
@@ -133,10 +133,11 @@ proc replayProcess*(fname:   string,
   tty.close()
 
 proc cmdPlaybackProcess*(params: seq[string], allowInput: bool) =
+  print("<h2>Beginning playback.</h2><br>")
   for item in params:
     if item == "-i":
       continue
     replayProcess(item, allowInput)
 
   restoreTermState()
-  print("<atomiclime>Playback complete.</atomiclime><br>")
+  print("<h2>Playback complete.</h2><br>")

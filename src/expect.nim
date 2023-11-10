@@ -1,7 +1,7 @@
 ## :Author: John Viega (john@crashoverride.com)
 ## :Copyright: 2023, Crash Override, Inc.
 
-import common, record, tables, nimutils, re, posix, os
+import common, record, tables, nimutils, re, posix, os, sugar
 
 type ExpectObject* = object
   captureFile*:  File
@@ -39,6 +39,14 @@ proc close*(ctx: var ExpectObject) {.cdecl.} =
 proc c10_close*(ctx: var ExpectObject) {.exportc, cdecl.} =
   ctx.close()
 
+proc pollFor*(ctx: var ExpectObject, ms: int) =
+  let endTime = unixTimeInMs() + uint64(ms)
+
+  while true:
+    discard ctx.subproc.poll()
+    if unixTimeInMs() > endTime:
+      break
+
 proc expect*(ctx: var ExpectObject, pattern = ""): string
     {.cdecl, discardable.} =
   if pattern == "" and ctx.patterns.len() == 0:
@@ -58,20 +66,45 @@ proc expect*(ctx: var ExpectObject, pattern = ""): string
 
     for k, v in ctx.patterns:
       let (f, l) = toMatch.findBounds(v, 0, l)
-      if f == -1:
+      if f == -1 or (f == 0 and l == 0):
         continue
-      ctx.matchable = ctx.matchable[l .. ^1]
+      ctx.matchable = ctx.matchable[l+1 .. ^1]
       ctx.patterns.clear()
+      ctx.pollFor(100)
       return k
 
   ctx.close()
   return "eof"
+
+proc expect*(ctx: var ExpectObject, f: (string) -> (int, string)): string =
+  while ctx.exited == false:
+    if ctx.subproc.poll():
+      ctx.exited = true
+      discard ctx.pty_fd.close()
+      break
+
+    let (ix, tag) = f(ctx.matchable)
+
+    if ix != -1:
+      ctx.matchable = ctx.matchable[ix .. ^1]
+
+    if tag != "":
+      ctx.pollFor(100)
+      return tag
+
+
+proc expect*(ctx: var ExpectObject, pats: OrderedTable[string, string]):
+           string {.cdecl.} =
+  for k, v in pats:
+    ctx.patterns[k] = re(".")
+  return ctx.expect()
 
 proc cap10_expect*(ctx: var ExpectObject, pattern: cstring): cstring {.
   exportc, cdecl .} =
   return cstring(ctx.expect($(pattern)))
 
 proc addPattern*(ctx: var ExpectObject, text: string, tag: string) {.cdecl.} =
+  ## Patterns get cleared every time a match occurs.
   ctx.patterns[tag] = re(text)
 
 proc cap10_add_pattern*(ctx: var ExpectObject, text: cstring, tag: cstring)
@@ -82,17 +115,20 @@ proc send*(ctx: var ExpectObject, text: string, pause = 0, addCr = true,
                                                         keyWait = 100)
     {.cdecl.} =
   if pause != 0:
-    sleep(pause div 2)
+    sleep(pause)
+    discard ctx.subproc.poll()
 
   var toWrite = if addCr: text & "\r" else: text
   for i in 0 ..< toWrite.len():
     ctx.pty_fd.rawFdWrite(addr toWrite[i], csize_t(1))
     if keyWait != 0:
       sleep(keyWait)
-    discard ctx.subproc.poll()
+      discard ctx.subproc.poll()
 
   if pause != 0:
     sleep(pause div 2)
+  discard ctx.subproc.poll()
+
 
 proc cap10_send*(ctx: var ExpectObject, text: cstring, pause = 0,
                  addCr = true, keywait = 100)
@@ -102,6 +138,12 @@ proc cap10_send*(ctx: var ExpectObject, text: cstring, pause = 0,
 proc spawnSession*(ctx: var ExpectObject, cmd = "/bin/bash",
                    args = @["-i"], captureFile = "", passthrough = false,
                    inputLogFile = "") {.cdecl.} =
+
+  var timeout: Timeval
+
+  timeout.tv_sec  = Time(0)
+  timeout.tv_usec = Suseconds(100)
+
 
   ctx = ExpectObject()
 
@@ -118,6 +160,7 @@ proc spawnSession*(ctx: var ExpectObject, cmd = "/bin/bash",
 
 
   ctx.subproc.initSubprocess(cmd, @[cmd] & args)
+  ctx.subproc.setTimeout(timeout)
   ctx.subproc.usePty()
   ctx.subproc.setExtra(addr ctx)
   ctx.subproc.setPassthrough(SpIoAll, passthrough)

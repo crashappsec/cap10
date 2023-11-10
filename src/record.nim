@@ -142,9 +142,11 @@ proc captureProcess*(exe: string, args: seq[string], inputLogExt = "",
 
 const logext = ".log"
 
-proc cmdCaptureProcess*(exe: string, args: seq[string]) =
-      print("<atomiclime>Recording.</atomiclime><br>")
-      let name = captureProcess(exe, args, logExt)
+proc cmdCaptureProcess*(exe: string, args: seq[string], verbose=true): string
+    {.discardable.} =
+      print("<h2>Recording.</h2><br>")
+      result = captureProcess(exe, args, logExt)
       restoreTermState()
-      print("<atomiclime>Output saved to: '" & name & "'</atomiclime><br>" &
-        "<atomiclime>Input log in: " & name & logExt & "'</atomiclime><br>")
+      if verbose:
+        print("<h2>Output saved to: '" & result & "'</h2>" &
+          "<h2>Input log in: " & result & logExt & "'</h2>")

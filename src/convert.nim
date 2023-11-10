@@ -77,7 +77,8 @@ template makeUtf8CutoffAdjustments() =
       payload = payload[0 ..< i]
     break
 
-proc toAsciiCast2*(fname: string, outfname = "") {.cdecl.} =
+proc toAsciiCast2*(fname: string, outfname = ""): string {.cdecl,
+                                                           discardable.} =
   var
     buf:         array[1024, uint8]
     hdr:         WriteHeader
@@ -96,10 +97,13 @@ proc toAsciiCast2*(fname: string, outfname = "") {.cdecl.} =
     progress:    ProgressBar
     processed:   int
 
+
   if outfname != "":
-    outf = open(outfname, fmWrite)
+    result = outfname
   else:
-    outf = open(joinPath(parts.dir, parts.name & ".cast"), fmWrite)
+    result = joinPath(parts.dir, parts.name & ".cast")
+
+  outf = open(result, fmWrite)
 
   inf.setFilePos(0)
   try:
@@ -111,11 +115,11 @@ proc toAsciiCast2*(fname: string, outfname = "") {.cdecl.} =
     dealloc(b)
     discard parseJson(hdrStr)
   except:
-        print("<br><atomiclime>Invalid cap10 file.</atomiclime><br>",
+        print("<br><h2>Invalid cap10 file.</h2>",
               ensureNl = false)
         quit(1)
 
-  print("<br><atomiclime>Converting...</atomiclime><br>")
+  print("<br><h2>Converting...</h2>")
   outf.write(hdrStr)
   outf.write("\n")
 
@@ -151,4 +155,4 @@ proc toAsciiCast2*(fname: string, outfname = "") {.cdecl.} =
   inf.close()
   outf.close()
   restoreTermState()
-  print("<atomiclime>Conversion complete.</atomiclime><br>")
+  print("<h2>Conversion complete.</h2>")

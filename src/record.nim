@@ -144,9 +144,9 @@ const logext = ".log"
 
 proc cmdCaptureProcess*(exe: string, args: seq[string], verbose=true): string
     {.discardable.} =
-      print("<h2>Recording.</h2><br>")
+      print(h2("Recording."))
       result = captureProcess(exe, args, logExt)
       restoreTermState()
       if verbose:
-        print("<h2>Output saved to: '" & result & "'</h2>" &
-          "<h2>Input log in: " & result & logExt & "'</h2>")
+        print(h2(text("Output saved to: ") + em(result)))
+        print(h2(text("Input log in: ") + em(logExt)))

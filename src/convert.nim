@@ -115,11 +115,10 @@ proc toAsciiCast2*(fname: string, outfname = ""): string {.cdecl,
     dealloc(b)
     discard parseJson(hdrStr)
   except:
-        print("<br><h2>Invalid cap10 file.</h2>",
-              ensureNl = false)
+        print(h2("Invalid cap10 file."))
         quit(1)
 
-  print("<br><h2>Converting...</h2>")
+  print(h2("Converting..."))
   outf.write(hdrStr)
   outf.write("\n")
 
@@ -155,4 +154,4 @@ proc toAsciiCast2*(fname: string, outfname = ""): string {.cdecl,
   inf.close()
   outf.close()
   restoreTermState()
-  print("<h2>Conversion complete.</h2>")
+  print(h2("Conversion complete."))

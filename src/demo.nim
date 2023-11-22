@@ -5,15 +5,7 @@ proc showTitle(ctx: var ExpectObject, x: string, before = 1000, after = 2000) =
     cap10ThemeSetup()
   if before > 0:
     ctx.pollFor(before)
-  echo("")
-  print("""
-<center><table>
-<colgroup><col width=80%></colgroup>
-<tbody>
-<tr><td><p><center>
-""" & x & """</center></p><br><br></td></tr>
-</tbody></table></center><br>
-""")
+  print(callout(x))
   ctx.send("")
   if after > 0:
     ctx.pollFor(after)

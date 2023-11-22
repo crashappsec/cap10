@@ -9,25 +9,24 @@ import record, play, nimutils, os, expect, convert, common, std/terminal
 export record, play, expect, common
 
 proc usage() {. noreturn .} =
-   print("""<atomiclime>Usage: cap10 (record | play | convert | cap) [arguments]</h1>
-<table>
- <tr><colgroup><col width=30><col width=70></colgroup><th>record [command]</th><td>Record terminal output, running the named command if provided; spawning a shell if not. Saves to output.cap10 in the current working directory.</td></tr>
- <tr><th>play [-i] [capfile]*</th><td>Plays named capture files, in order. If no file names are provided, assumes 'output.cap10'. If the <em>-i</em> flag is passed, then you can use space to pause/play and q to quit. This is off by default at the moment.</td></tr>
- <tr><th>convert [capfile]</th><td>Convert a cap10 file to an asciicast v2 file.</td></tr>
- <tr><th>cap [command]</th><td>Record, producing full capture (cap10, input log, asciicast and gif, if agg is installed).</td></tr>
-</table>
-""")
-   quit(1)
+  var 
+    rec  = text("Record terminal output, running the named command if provided; spawning a shell if not. Saves to output.cap10 in the current working directory.")
+    play = text("Plays named capture files, in order. If no file names are provided, assumes 'output.cap10'. If the ") + em("-i") + text(" flag is passed, then you can use space to pause/play and q to quit. This is off by default at the moment.")
+    convert = text("Convert a cap10 file to an asciicast v2 file.")
+    cap = text("Record, producing full capture (cap10, input log, asciicast and gif, if agg is installed).")
+    cmds = @[@[em("record [command]"), rec],
+             @[em("play [-i] [capfile]*"), play],
+             @[em("convert [capfile]"), convert],
+             @[em("cap [command]"), cap]]
+
+  print(quickTable(cmds, noheaders = true, title = "cap10: Capture, replay, and convert terminal recordings"))
+  quit(1)
 
 when isMainModule:
   cap10ThemeSetup()
   useNativeLocale()
   useCurrentTermStateOnSignal()
 
-  setStyle("h1", newStyle(fgColor = "yellow", bgColor = "blue",
-                          underline = UnderlineSingle))
-  setStyle("th", newStyle(overflow = OWrap,
-                 tmargin = 0, fgColor = "lime", align = AlignC))
   var params = commandLineParams()
   if len(params) >= 1:
     if params[0] == "cap":
@@ -42,21 +41,22 @@ when isMainModule:
 
       let aggOpts = findAllExePaths("agg")
       if len(aggOpts) == 0:
-        print("<h2>Skipping gif conversion; agg not found. Install " &
-          "https://github.com/asciinema/agg and then run 'cap10 convert'." &
-          "</h2>")
+        print(h2("Skipping gif conversion; agg not found. Install " &
+          "https://github.com/asciinema/agg for next time."))
+
       else:
-        print("<h2>Creating gif by calling agg:</h2><br>")
+        print(h2("Creating gif by calling agg:"))
         let
           res         = runCommand(aggOpts[0], @[acFile, gifFile],
                                    passthrough = SpIoStdout, capture = SpIoNone)
         removeFile(c10File)
         removeFile(c10File & ".log")
+        echo("")
         if res.getExit() == 0:
           removeFile(acFile)
-          print("<em>Output gif to: </em>" & gifFile)
+          print(h2(text("Output gif to:  ") + em(gifFile)))
         else:
-          print("<em>Asciicast file: </em> " & acFile)
+          print(h2(text("Asciicast file: ") + em(acFile)))
 
     elif params[0] in ["record", "rec"]:
       if len(params) == 1:

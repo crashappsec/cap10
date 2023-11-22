@@ -7,8 +7,8 @@ var
   paused = false
   exit   = false
 
-proc handlePlayerInput(ignore0: pointer,
-                       ignore1: pointer,
+proc handlePlayerInput(ignore0: var RootRef,
+                       ignore1: var RootRef,
                        capture: cstring,
                        caplen:  int) {.cdecl.} =
   var incap = bytesToString(cast[ptr UncheckedArray[char]](capture), caplen)
@@ -76,7 +76,7 @@ proc replayProcess*(fname:   string,
       sepTime = maxTimeBetweenEvents
 
   except:
-        print("<br><h2>Invalid cap10 file.</h2><br>")
+        print(h2("Invalid cap10 file."))
         quit(1)
 
   if allowInput:
@@ -94,7 +94,7 @@ proc replayProcess*(fname:   string,
       switchboard.run()
 
       if exit:
-        print("<br><h2>Quitting early.</h2><br>")
+        print(h2("Quitting early."))
         quit(0)
       if paused:
         sleep(100)
@@ -133,11 +133,11 @@ proc replayProcess*(fname:   string,
   tty.close()
 
 proc cmdPlaybackProcess*(params: seq[string], allowInput: bool) =
-  print("<h2>Beginning playback.</h2><br>")
+  print(h2("Beginning playback."))
   for item in params:
     if item == "-i":
       continue
     replayProcess(item, allowInput)
 
   restoreTermState()
-  print("<h2>Playback complete.</h2><br>")
+  print(h2("Playback complete."))

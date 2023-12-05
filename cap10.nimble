@@ -1,8 +1,8 @@
-version     = "0.3.0"
+version     = "0.3.1"
 author      = "John Viega"
 description = "A tool to capture and replay command line terminal sessions"
 license     = "Apache-2.0"
-bin         = @["cap10", "demo", "apidemo"]
+bin         = @["cap10", "demo"]
 srcDir      = "src"
 
 requires "nim >= 2.0.0"
